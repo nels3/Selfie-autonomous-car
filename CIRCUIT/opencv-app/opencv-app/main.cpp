@@ -36,7 +36,7 @@
 #define DEBUG_MODE
 //#define PREVIEW_MODE
 #define NO_USB
-//#define STOPLIGHTS_MODE
+#define STOPLIGHTS_MODE
 #define IDS_MODE
 
 
@@ -75,9 +75,8 @@ int main()
     INIT_TIMER
     INIT_TIMER2
 
-    struct timespec start, end;
+    struct timespec start;
     unsigned int licznik_czas = 0;
-    float seconds = 0;
     float fps = 0;
 
     // Declaration of cv::MAT variables
@@ -188,7 +187,7 @@ int main()
 			lightDetector.prepare_first_image(ids_image,old_frame,lightDetector.roi_number);
 			light_var--;
 		}
-		else if (light.start_light == false){
+        else if (lightDetector.start_light == false){
 #ifdef DEBUG_MODE
 			lightDetector.test_roi(ids_image,display);
 #endif //DEBUG_MODE
@@ -198,7 +197,6 @@ int main()
 //              std::cout<<"START"<<std::endl;
                 red_light_visible = false;
                 green_light_visible = true;
-                break;
 			}
             else{
 //              std::cout<<"WAIT"<<std::endl;
@@ -228,9 +226,11 @@ int main()
         START_TIMER
 #endif //DEBUG_MODE
         // Stop line
-        laneDetector.StopLine_v2(HSV_frame, hsv_frame, stop_line_detected);
-        STOP_TIMER("STOP LINE")
-        START_TIMER
+        if (lightDetector.start_light == true){
+            laneDetector.StopLine_v2(HSV_frame, hsv_frame, stop_line_detected);
+            STOP_TIMER("STOP LINE")
+            START_TIMER
+        }
         // Push data
         shm_lane_points.push_lane_data(yellow_vector, white_vector, laneDetector.cones_vector);
 
@@ -334,10 +334,7 @@ int main()
 
         if(licznik_czas > 200)
         {
-
             licznik_czas = 0;
-            clock_gettime(CLOCK_MONOTONIC, &end);
-            seconds = (end.tv_sec - start.tv_sec);
             fps  =  200*1e6 / TIMER2_DIFF;
             std::cout <<"FPS: " << fps << " dt MAX: "<< frame_delay_max << "ms" << std::endl;
             frame_delay_max = 0.0;

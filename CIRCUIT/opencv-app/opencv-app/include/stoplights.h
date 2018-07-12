@@ -33,7 +33,7 @@ private:
 	void count_pixels(cv::Mat &input);
 
 public:
-	//main flag telling us if green light is on image
+	//main flag telling us if green lightDetector is on image
 	bool start_light = false;
 	//flag not to analize first frame
 	bool start_finding = false;
