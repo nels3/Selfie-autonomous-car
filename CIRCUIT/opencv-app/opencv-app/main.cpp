@@ -109,7 +109,7 @@ int main()
     //cv::Mats used in stoplight algorythm
     cv::Mat old_frame(CAM_RES_Y,CAM_RES_X,CV_8UC1);
     cv::Mat display;
-    cv::Mat diffrence(CAM_RES_Y,CAM_RES_X,CV_8UC1);
+    cv::Mat difference(CAM_RES_Y,CAM_RES_X,CV_8UC1);
 
 #endif
 
@@ -142,71 +142,10 @@ int main()
 
     static int denom = 0;
 
-#ifdef STOPLIGHTS_MODE
-    cv::namedWindow("Frame",1);
-    cv::namedWindow("Light detection",1);
-    cv::namedWindow("ROI",1);
-
-    for(int i = 0; i < 15; i++){
-        pthread_cond_wait(&algorithm_signal, &algorithm_signal_mutex);
-        pthread_mutex_lock(&ids.frame_mutex);
-        ids.ids_frame.copyTo(frame);
-        pthread_mutex_unlock(&ids.frame_mutex);
-        lightDetector.prepare_first_image(frame,old_frame,lightDetector.roi_number);
-    }
-
-    while(true){
-        if(licznik_czas == 0)
-        {
-            clock_gettime(CLOCK_MONOTONIC, &start);
-        }
-        ids.get_frame_to(frame);
-
-#ifdef DEBUG_MODE
-        lightDetector.test_roi(frame,display);
-#endif //DEBUG_MODE
-        lightDetector.find_start(frame,diffrence,old_frame,lightDetector.roi_number);
-
-#ifdef DEBUG_MODE
-        if (++denom>5)
-        {
-            denom = 0;
-            cv::imshow("Frame", frame);
-            cv::imshow("Light detection", diffrence);
-            cv::imshow("ROI", display);
-
-        }
-        cv::waitKey(1);
-#endif //DEBUG_MODE
-
-        if (lightDetector.start_light == true)
-        {
-//                std::cout<<"START"<<std::endl;
-                red_light_visible = false;
-                green_light_visible = true;
-                break;
-        }
-        else{
-//                std::cout<<"WAIT"<<std::endl;
-    }
-        if(licznik_czas > 100)
-        {
-            licznik_czas = 0;
-            clock_gettime(CLOCK_MONOTONIC, &end);
-            seconds = (end.tv_sec - start.tv_sec);
-            fps  =  1 / (seconds / 100);
-            std::cout <<"FPS: " << fps << std::endl;
-        }
-        else
-        {
-            licznik_czas++;
-        }
-    }
-
-#endif //STOPLIGHTS_MODE
 
 // Main loop
-
+    cv::namedWindow("0.2 Light detection",1);
+    cv::namedWindow("0.1 ROI",1);
     cv::namedWindow("3.1 Yellow Bird Eye", 1);
     cv::namedWindow("3.2 White Bird Eye", 1);
 
@@ -216,7 +155,7 @@ int main()
 
     // Bird Eye first calculation
     laneDetector.calculate_bird_var(frame_ref);
-
+	
     while(true)
     {
         static auto frame_delay_then = std::chrono::high_resolution_clock::now();
@@ -243,7 +182,31 @@ int main()
 //        laneDetector.Undist(ids_image, undist_frame, cameraMatrix, distCoeffs);
 //        STOP_TIMER("Distort")
 //        START_TIMER
-
+#ifdef STOPLIGHTS_MODE
+		static uint8_t light_var = 5;
+		if (light_var){
+			lightDetector.prepare_first_image(ids_image,old_frame,lightDetector.roi_number);
+			light_var--;
+		}
+		else if (light.start_light == false){
+#ifdef DEBUG_MODE
+			lightDetector.test_roi(ids_image,display);
+#endif //DEBUG_MODE
+			lightDetector.find_start(ids_image,difference,old_frame,lightDetector.roi_number);
+			if (lightDetector.start_light == true)
+			{
+//              std::cout<<"START"<<std::endl;
+                red_light_visible = false;
+                green_light_visible = true;
+                break;
+			}
+            else{
+//              std::cout<<"WAIT"<<std::endl;
+			}
+	
+		}
+#endif //STOPLIGHTS_MODE
+		
         laneDetector.bird_eye(ids_image, undist_frame);
         STOP_TIMER("BIRD EYE")
         START_TIMER
@@ -259,11 +222,11 @@ int main()
         laneDetector.detectLine_both(frame_out_edge_white, white_vector,frame_out_edge_yellow, yellow_vector);
         STOP_TIMER("Detect lines")
         START_TIMER
-
-       laneDetector.drawPoints_both(white_vector, white_vector_frame,yellow_vector, yellow_vector_frame);
+#ifdef DEBUG_MODE
+        laneDetector.drawPoints_both(white_vector, white_vector_frame,yellow_vector, yellow_vector_frame);
         STOP_TIMER("Draw points")
         START_TIMER
-
+#endif //DEBUG_MODE
         // Stop line
         laneDetector.StopLine_v2(HSV_frame, hsv_frame, stop_line_detected);
         STOP_TIMER("STOP LINE")
@@ -287,6 +250,10 @@ int main()
             // Display info on screen
             //cv::imshow("Camera", frame);
             //cv::imshow("UndsCamera", undist_frame);
+#ifdef STOPLIGHTS_MODE
+            cv::imshow("0.2 Light detection", difference);
+            cv::imshow("0.1 ROI", display);
+#endif
             cv::imshow("0 Frame", ids_image);
             //cv::imshow("Hist frame", hist_frame);
 //            cv::imshow("Hsv frame", hsv_frame);
